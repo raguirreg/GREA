@@ -170,9 +170,56 @@ colnames.check <- function(c.names, df){
 
 
 ############
-GREA.test <- function(sampled.genes.sets, gene.set, query.genomic.region, plot=TRUE){
+GREA.test <- function(sampled.genes.sets, query.gene.set, genomic.region.gene.sets, plot=TRUE){
 
+  cat("\n[INFO]\t A total of ", length(sampled.genes.sets), "sampled gene sets will be used to generate an empirical distribution")
+  cat("\n[INFO]\t ", length(genomic.region.gene.sets), "genomic regions")
+
+  n.unique.grs <- sapply(genomic.region.gene.sets, function(x){length(unique(x[,"SNP"]))})
+
+  # count number of SNPs have at least 1 neighboring gene is present in query.gene.set
+  overlap.per.gr <- sapply(genomic.region.gene.sets,
+                              function(x){length(unique(x[,"SNP"][which(x[,"ensembl"] %in% query.gene.set)]))
+                              })
+  # percentage of count
+  perc.per.gr <- overlap.per.trait/n.unique.grs
+
+
+  # get genes for final report
+  overlapped.ensembl.per.gr <- lapply(genomic.region.gene.sets, function(x){query.gene.set %in% x[,"ensembl"]})
+  overlapped.symbol.per.gr <- gene.info$gene_name[match(overlapped.ensembl.per.gr, gene.info$gene_id)]
+  overlapped.symbol.per.gr.vector <- sapply(overlapped.symbol.per.trait, function(x){paste(x, collapse = "/")})
+
+  ## count number of genes within random sets overlaps with the GWAS "genes"
+  null.overlap.per.gr <- lapply(sampled.genes.sets, function(y){
+                              sapply(genomic.region.gene.sets, function(x){
+                                  length(unique(x[,"SNP"][which(x[,"ensembl"] %in% y )]))
+                          })})
+  ## get it in percentage
+  null.perc.overlap.per.gr <- lapply(null.overlap.per.gr, function(x){x/n.unique.grs})
+  null.perc.overlap.per.gr <- do.call(rbind, null.perc.overlap.per.gr)
+  rownames(null.perc.overlap.per.gr) <- NULL
+
+  enrich.pvals <- sapply(1:length(genomic.region.gene.sets),
+                         function(x){pvalRight(x= perc.per.trait[x], dist = null.perc.overlap.per.gr[,x])})
+  #depleted.pvals <- sapply(1:length(full.gwas.genes.list),
+  #                        function(x){pvalLeft(x= perc.per.trait[x], dist = null.perc.overlap.per.trait[,x])})
+
+  #Summary report
+  GREA.summary <- data.frame(trait= names(perc.per.trait),
+                                          perc.per.trait= perc.per.trait,
+                                          enrich.pvals=enrich.pvals,
+                                          #depleted.pvals=depleted.pvals,
+                                          mean.permutation.overlap= apply(null.perc.overlap.per.gr, 2, mean),
+                                          SD.permutation.overlap= apply(null.perc.overlap.per.gr, 2, sd),
+                                          overlappedGenes=overlapped.symbol.per.gr.vector
+                                          )
+
+  return(GREA.summary)
 }
+
+
+
 
 ############
 load.annotate.genes.from.GWAs.hits <- function(file,  source="Immunobase", gene.window= 500000, gene.info){

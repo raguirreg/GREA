@@ -4,7 +4,16 @@ Title: Genomic Region Enrichment Analysis (GREA)
 Version: 0.1.0
 Author: Aguirre-Gamboa Raúl 
 Maintainer: Aguirre-Gamboa Raúl <raul.aguirre.gamboa@gmail.com>
-Description: To be updated
+Description: To be updated *****
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
+Suggests: knitr,rmarkdown
+VignetteBuilder: knitr
+Imports:
+    data.table,
+    tidyverse,
+    foreach,
+    snow,
+    doSNOW
+RoxygenNote: 6.1.1

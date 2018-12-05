@@ -1,0 +1,124 @@
+---
+title: "Vignette Title"
+author: "Vignette Author"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Introduction 
+Genomic Region Enrichment Analysis (GREA), is an R package which facilitates the ....
+```{r}
+
+```
+
+
+## Example using simulated example with public data
+
+We will be using using DESeq2 and biomaRt for differential expression analysis and subsequent annotation of genes. If you don't have these packages installed please run: 
+```{r, eval=FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("DESeq2")
+biocLite("biomaRt")
+```
+
+
+### Case study 
+For this tutorial we will make use of a dataset comprised of 74 transcriptome profiles of CD4+ T cells from celiac disease patients and healthy controls, which have also been subjected to two different immune stimulation with CD3 and PMA [GSE69549](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE69549). We have pre-loaded this dataset into thre GREA package for this tutorial. 
+
+```{r}
+library(data.table)
+library(tidyverse)
+library(GREA)
+data("col.data")
+data("count.table")
+
+pma_sampleNames <- rownames(col.data)[which(col.data$stimulation == "PMA")] 
+pma_countTable <- count.table[,pma_sampleNames]
+pma_colData <- col.data[pma_sampleNames,] #colData has sample names by row
+
+
+library(DESeq2)
+# setting "Control" samples as reference factor
+pma_colData$type <- factor(pma_colData$type, levels= c("Control", "Coeliac"))
+dds_pma <- DESeqDataSetFromMatrix(countData = pma_countTable,
+                              colData = pma_colData,
+                              design = ~ type)
+dds_pma <- DESeq(dds_pma)
+res_pma <- results(dds_pma)
+
+## deffining differentially expressed genes for 
+de_pma <- res_pma[which(res_pma$padj <= 0.01 & abs(res_pma$log2FoldChange ) >= 1),]
+
+## number of differentially expressed genes. 
+nrow(de_pma)
+```
+
+### Running GREA to test for enrichment of genomic regions within a gene set 
+Now that we have a gene set defined by the differentially expressed genes between CD4+ T cells derived from healthy and celiac disease stimulated with PMA, we will run the \code{GREA.test} function to asseses if this is gene set is enriched genetic risk factors associated to autoimmune diseases.
+
+#### Generating a random sets of genes 
+Since genes are not uniformally distributed in the genome .... **** and we need to assess if the GWAS SNPs (which represent genomic regions) are enriched in neighboring genes. 
+```{r sampled.gene.sets}
+# load the data.info object 
+data("gene.info")
+
+de_pma.ensmebl <- gene.info[match(rownames(de_pma), as.character(gene.info$gene_name)),"gene_id"]
+# remove the NAs - symbols which could not be matched - usually non.coding genes and synonims 
+de_pma.ensmebl <- de_pma.ensmebl[which(!is.na(de_pma.ensmebl))]
+
+# we need to define the total number of genes which were tested, as this is the set of genes from which we will be able to generate the sampled gene sets. 
+all.genes.ensembl <- gene.info[match(rownames(res_pma), as.character(gene.info$gene_name)),"gene_id"] 
+all.genes.ensembl <- all.genes.ensembl[which(!is.na(all.genes.ensembl))]
+
+# using the gene.info we will filtered out for the genes used in the anlaysis - and genes from autosomal chromosomes. 
+gene.info.chr <- gene.info[which(gene.info$chr %in% c(1:22) == TRUE),]
+gene.info.chr.filtered <- gene.info.chr[which(as.character(gene.info.chr$gene_id) %in% all.genes.ensembl),]
+
+# with bin.genes.genomic.regions we will group all genes into bins which are defined by gene.binning.window
+gene.binning.window <- 125000
+gene.info.binned <- bin.genes.genomic.regions(gene.pos = gene.info.chr.filtered, window = gene.binning.window)
+
+# we can also plot the distribution how many genes are in each of the bins we generated.
+
+bin.nGenes <- table(gene.info.binned$bin.tag)
+gene.info.binned$nGenes.in.bin <- as.numeric(bin.nGenes[as.character(gene.info.binned$bin.tag)])
+
+ggplot(gene.info.binned, aes(x=nGenes.in.bin))+
+  geom_bar(stat="count", position = "dodge", alpha=0.8)+
+  theme_bw()+
+  theme(text=element_text(size=10, family="Helvetica"))
+
+```
+
+As shown in the plot we can see that even thought that the plenty of bins contains only 1 gene (5,170), roughly 40% of the bins contains 2 or more genes. 
+
+Now the object \code{gene.info.binned} can be used to generate random gene sets for this particular example. This might take a few minutes... 
+```{r}
+
+de_pma.sampled.gene.sets <-  get.sampled.genes(input.genes = de_pma.ensmebl,
+                                               gene.info.binned = gene.info.binned,
+                                               binning.widow = 125000,
+                                               n.genes.sets = 1000, 
+                                               n.excess.genes.limit = 10,
+                                               parallel = TRUE, 
+                                               n.clusters = 3)
+
+
+```
+
+Once we have our random gene sets we can use them to create a null distribution and ascertain if our query gene set (\code{})
+```{r }
+# loading genesets from Immuno-chip derived GWAS hits. 
+data("ib.traits.genes.list")
+
+de_pma.GREA <- GREA.test(query.gene.set = de_pma.ensmebl, 
+                        sampled.genes.sets = de_pma.sampled.gene.sets, 
+                        genomic.region.gene.sets = ib.traits.genes.list, 
+                        plot = TRUE)
+
+```
+

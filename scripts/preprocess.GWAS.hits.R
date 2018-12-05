@@ -10,11 +10,10 @@ load(file = "./data/gene.info.GRCh37.75.RData")
 #colnames(gene.info)[1:3] <- c("chr","left","right")
 #save(gene.info, file = "./data/gene.info.GRCh37.75.RData")
 
+gene.binning.window <- 125000
+
 ##### Immunobase GWAS hits
 # files were downloaded from https://www.immunobase.org/downloads/protected_data/iChip_Data/
-ib.files.path <- "/Users/raulaguirre/IELs_celiac/GWAS_enrichment/immunoBase_GWASenrichment/immunoChip/iChipData"
-ib.files <- list.files(ib.files.path)
-
 
 ib.files.path <- "/Users/raulaguirre/IELs_celiac/GWAS_enrichment/immunoBase_GWASenrichment/immunoChip/iChipData/"
 ib.files <- list.files(ib.files.path, full.names=TRUE, pattern = ".tab$")
@@ -35,23 +34,24 @@ ib.trait.list <- lapply(ib.trait.list, function(x){x[x[,"Chr"] %in% 1:22,]})
 ### Prune SNPs based on position and pvalue
 ib.trait.prunned.list <- list()
 for(i.gwas in 1:length(ib.trait.list)){
-  ## make chromosome and position columns as numeric for all traits.
-  ib.trait.list[[i.gwas]][,"Position"] <- as.numeric(ib.trait.list[[i.gwas]][,"Position"])
-  ib.trait.list[[i.gwas]][,"Chr"] <- as.numeric(ib.trait.list[[i.gwas]][,"Chr"])
+## make chromosome and position columns as numeric for all traits.
+ib.trait.list[[i.gwas]][,"Position"] <- as.numeric(ib.trait.list[[i.gwas]][,"Position"])
+ib.trait.list[[i.gwas]][,"Chr"] <- as.numeric(ib.trait.list[[i.gwas]][,"Chr"])
 
-  ib.trait.prunned.list[[i.gwas]] <- prune.loci.by.proximity(window = "2.5MB",
-                                                              positions = ib.trait.list[[i.gwas]],
-                                                              position.colnames = c("Chr", "Position"),
-                                                              prune = TRUE,
-                                                              pvalCol = "PValue")
+ib.trait.prunned.list[[i.gwas]] <- prune.loci.by.proximity(window = "2.5MB",
+                                                            positions = ib.trait.list[[i.gwas]],
+                                                            position.colnames = c("Chr", "Position"),
+                                                            prune = TRUE,
+                                                            pvalCol = "PValue")
 }
 names(ib.trait.prunned.list) <- names(ib.trait.list)
 
 
 ib.traits.genes.list <- lapply(ib.trait.prunned.list, function(x){get.genes.within.loci(positions = x,
-                                                                                                  position.colnames = c("Chr", "Position", "Marker"),
-                                                                                                  gene.window=gene.binning.window,
-                                                                                                  gene.info= gene.info)})
+                                                                                        position.colnames = c("Chr", "Position", "Marker"),
+                                                                                        pVal.col = "PValue",
+                                                                                        gene.window=gene.binning.window,
+                                                                                        gene.info= gene.info)})
 
 ###########################################################################
 ##### Immunobase GWAS hits (genome.wide chip hits)
@@ -91,10 +91,11 @@ names(ib.gw.trait.prunned.list) <- names(ib.gw.trait.list)
 
 ib.gw.traits.genes.list <- lapply(ib.gw.trait.prunned.list, function(x){get.genes.within.loci(positions = x,
                                                                                                    position.colnames = c("Chr", "Position", "Marker"),
+                                                                                                    pVal.col = "PValue",
                                                                                                    gene.window=gene.binning.window,
                                                                                                    gene.info= gene.info)})
 
 
 ##### Save both lists and save them to incorporate them to the package and be used as base enrichments.
-save(ib.gw.traits.genes.list, file = "./data/ib.traits.genes.list.RData")
+save(ib.traits.genes.list, file = "./data/ib.traits.genes.list.RData")
 save(ib.gw.traits.genes.list, file = "./data/ib.gw.traits.genes.list.RData")

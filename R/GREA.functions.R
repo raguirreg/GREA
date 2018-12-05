@@ -6,7 +6,7 @@
 #' @return A dataframe with \code{gene.set}, its genomic position and an extra colum \code{loci} grouping genes to a genomic loci
 #' @examples
 #' gene.pos.test.bin <- bin.genes.genomic.regions(gene.pos.test, window=1000000)
-#'
+#' @export
 bin.genes.genomic.regions <- function(gene.pos,
                                       window=500000){
   chrs <- unique(gene.pos$chr)
@@ -72,8 +72,7 @@ bin.genes.genomic.regions <- function(gene.pos,
 #' @param n.genes.sets Number of random gene sets that are going to be generated.
 #' @param parallel Run the sampling iterations in parallel. At the moment this is the only available option.
 #' @return A dataframe with \code{gene.set}, its genomic position and an extra colum \code{loci} grouping genes to a genomic loci
-
-#input.genes <- clust.info$ensembl[which(clust.info$cluster == 1)]
+#' @export
 get.sampled.genes <- function(input.genes,
                               gene.info.binned,
                               binning.widow=125000,
@@ -84,7 +83,6 @@ get.sampled.genes <- function(input.genes,
 
   cl <- snow::makeCluster(n.clusters, type = "SOCK")
   doSNOW::registerDoSNOW(cl= cl)
-  require(foreach)
 
   input.genes.gene.info <- gene.info.binned[match(input.genes, as.character(gene.info.binned$gene_id)),]
   ## remove non-somatic genes
@@ -133,7 +131,7 @@ get.sampled.genes <- function(input.genes,
 #' @param gene.info A data.frame with genomic coordinates and genes. For reference please look at data(gene.info)
 #' @param pVal.col Character, if provided, then an extra column to the returned data-frame will be added with the pValue of the SNP associated.
 #' @return A dataframe
-
+#' @export
 get.genes.within.loci <- function(positions,
                                   position.colnames = c("CHR", "BP", "SNP"),
                                   gene.window=500000,
@@ -193,7 +191,7 @@ get.genes.within.loci <- function(positions,
 #' @param gene.info A data.frame with genomic coordinates for genes. For reference please look at data(gene.info)
 #' @param pVal.col Character, if provided, then an extra column to the returned data-frame will be added with the pValue of the SNP associated.
 #' @return A dataframe
-#'
+#' @export
 prune.loci.by.proximity <- function(positions,
                                     window="2MB",
                                     position.colnames= c("chr", "pos"),
@@ -242,6 +240,7 @@ colnames.check <- function(c.names, df){
 #' @param genomic.region.gene.sets A list where each element is a data.frame that includes at least SNPs and genes as ensembl IDs.
 #' @param plot boolean, if true genrates a plot with the empirical null distribution and the observed overlapped given bye \code{query.gene.set}
 #' @return A GREAsummary data.frame
+#' @export
 GREA.test <- function(sampled.genes.sets,
                       query.gene.set,
                       genomic.region.gene.sets,
@@ -307,6 +306,7 @@ GREA.test <- function(sampled.genes.sets,
 #' @param null.perc.overlap.per.gr a list with the overlap between sampled genes and
 #' @param GREA.summary a GREA.summary data.frame calculated through the \code{GREA.test} function
 #' @return a ggplot object
+#' @export
 null.dist.plotter <- function(null.perc.overlap.per.gr,
                               GREA.summary){
   pData <- melt(null.perc.overlap.per.gr)
@@ -315,7 +315,7 @@ null.dist.plotter <- function(null.perc.overlap.per.gr,
   vline.data <- GREA.summary[,c("perc.per.gr", "trait", "enrich.pvals")]
   colnames(vline.data) <- c("perc.per.trait", "Var2", "enrich.pvals")
   vline.data$line.color <- "Significant"
-  vline.data$line.color[which(enrich.pvals > 0.05)] <- "NonSignificant"
+  vline.data$line.color[which(vline.data$enrich.pvals > 0.05)] <- "NonSignificant"
 
   null.dist.plot <- ggplot(pData, aes(x=value))+
                       geom_bar(stat="count", alpha= 0.7)+
@@ -332,6 +332,7 @@ null.dist.plotter <- function(null.perc.overlap.per.gr,
 #' @param x numeric, observed value to be compared against a null distribution
 #' @param dist numeric vector defining a null distribution
 #' @return return the estimated pValue based on the null distrubtion provided
+#' @export
 pvalRight <- function(x, dist) {
   sum(dist > x) / length(dist)
 }
@@ -344,6 +345,7 @@ pvalRight <- function(x, dist) {
 #' @param gene.window Numeric, genomic window
 #' @param gene.info A data.frame with genomic coordinates for genes. For reference please look at data(gene.info)
 #' @return return ---
+#' @export
 load.annotate.genes.from.GWAs.hits <- function(file,
                                                source="Immunobase",
                                                gene.window= 500000,

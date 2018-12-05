@@ -29,10 +29,11 @@ biocLite("biomaRt")
 ### Case study 
 For this tutorial we will make use of a dataset comprised of 74 transcriptome profiles of CD4+ T cells from celiac disease patients and healthy controls, which have also been subjected to two different immune stimulation with CD3 and PMA [GSE69549](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE69549). We have pre-loaded this dataset into thre GREA package for this tutorial. 
 
-```{r}
+```{r diffExpression, echo=FALSE, message=FALSE, warning=FALSE}
 library(data.table)
 library(tidyverse)
 library(GREA)
+
 data("col.data")
 data("count.table")
 
@@ -58,11 +59,11 @@ nrow(de_pma)
 ```
 
 ### Running GREA to test for enrichment of genomic regions within a gene set 
-Now that we have a gene set defined by the differentially expressed genes between CD4+ T cells derived from healthy and celiac disease stimulated with PMA, we will run the \code{GREA.test} function to asseses if this is gene set is enriched genetic risk factors associated to autoimmune diseases.
+Now that we have a gene set defined by the differentially expressed genes between CD4+ T cells derived from healthy and celiac disease stimulated with PMA, we will run the `GREA.test` function to asseses if this is gene set is enriched genetic risk factors associated to autoimmune diseases.
 
 #### Generating a random sets of genes 
 Since genes are not uniformally distributed in the genome .... **** and we need to assess if the GWAS SNPs (which represent genomic regions) are enriched in neighboring genes. 
-```{r sampled.gene.sets}
+```{r binning gene.info, fig.align="center"}
 # load the data.info object 
 data("gene.info")
 
@@ -80,7 +81,7 @@ gene.info.chr.filtered <- gene.info.chr[which(as.character(gene.info.chr$gene_id
 
 # with bin.genes.genomic.regions we will group all genes into bins which are defined by gene.binning.window
 gene.binning.window <- 125000
-gene.info.binned <- bin.genes.genomic.regions(gene.pos = gene.info.chr.filtered, window = gene.binning.window)
+gene.info.binned <- GREA::bin.genes.genomic.regions(gene.pos = gene.info.chr.filtered, window = gene.binning.window)
 
 # we can also plot the distribution how many genes are in each of the bins we generated.
 
@@ -96,10 +97,10 @@ ggplot(gene.info.binned, aes(x=nGenes.in.bin))+
 
 As shown in the plot we can see that even thought that the plenty of bins contains only 1 gene (5,170), roughly 40% of the bins contains 2 or more genes. 
 
-Now the object \code{gene.info.binned} can be used to generate random gene sets for this particular example. This might take a few minutes... 
-```{r}
+Now the object `gene.info.binned` can be used to generate random gene sets for this particular example. This might take a few minutes... 
+```{r sampled.gene.sets}
 
-de_pma.sampled.gene.sets <-  get.sampled.genes(input.genes = de_pma.ensmebl,
+de_pma.sampled.gene.sets <-  GREA::get.sampled.genes(input.genes = de_pma.ensmebl,
                                                gene.info.binned = gene.info.binned,
                                                binning.widow = 125000,
                                                n.genes.sets = 1000, 
@@ -110,15 +111,18 @@ de_pma.sampled.gene.sets <-  get.sampled.genes(input.genes = de_pma.ensmebl,
 
 ```
 
-Once we have our random gene sets we can use them to create a null distribution and ascertain if our query gene set (\code{})
-```{r }
+Once we have our random gene sets we can use them to create a null distribution and ascertain if our query gene set `get.sampled.genes`
+```{r GREA.test, fig.align="center", fig.height=5, fig.width=7}
 # loading genesets from Immuno-chip derived GWAS hits. 
 data("ib.traits.genes.list")
 
-de_pma.GREA <- GREA.test(query.gene.set = de_pma.ensmebl, 
+de_pma.GREA <- GREA::GREA.test(query.gene.set = de_pma.ensmebl, 
                         sampled.genes.sets = de_pma.sampled.gene.sets, 
                         genomic.region.gene.sets = ib.traits.genes.list, 
                         plot = TRUE)
+de_pma.GREA$GREA.summary
 
+plot(de_pma.GREA$null.dist.plot)
 ```
 
+Only 1 trait (PBC) seems to enriched with genes that are present in our 

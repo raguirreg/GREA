@@ -21,5 +21,4 @@ Binning genes into genomic windows.
 }
 \examples{
 gene.pos.test.bin <- bin.genes.genomic.regions(gene.pos.test, window=1000000)
-
 }
